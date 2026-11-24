@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light}html,body{margin:0}body{-webkit-tap-highlight-color:transparent}[hidden]{display:none!important}</style>
+<title>Nivesh Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: sticky header with calculator chips; inputs card beside results on wide screens, stacked on phones. */
+:root{
+  --bg:#F1F4F6; --surface:#FFFFFF; --surface-2:#E8EDF1; --ink:#11202B; --muted:#546673; --line:#D3DBE1;
+  --accent:#0B6E5B; --accent-ink:#FFFFFF;
+  --c-base:#2F5D8A; --c-gain:#188A72; --c-cost:#C46A0B;
+  --font-display:"Space Grotesk","Segoe UI",system-ui,sans-serif;
+  --font-body:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1418; --surface:#141E24; --surface-2:#1C2931; --ink:#E5ECF0; --muted:#93A5B0; --line:#26353E;
+    --accent:#3FC1A5; --accent-ink:#052019; --c-base:#7FA6C8; --c-gain:#46C9AD; --c-cost:#E8A25A;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1418; --surface:#141E24; --surface-2:#1C2931; --ink:#E5ECF0; --muted:#93A5B0; --line:#26353E;
+  --accent:#3FC1A5; --accent-ink:#052019; --c-base:#7FA6C8; --c-gain:#46C9AD; --c-cost:#E8A25A;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;-webkit-text-size-adjust:100%}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+h1,h2,h3{font-family:var(--font-display);text-wrap:balance;margin:0}
+.wrap{max-width:1040px;margin-inline:auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:12px;padding-block:12px 10px}
+.mark{flex:none;width:34px;height:34px;border-radius:9px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font:700 19px var(--font-display)}
+.brand h1{font-size:18px;line-height:1.2;font-weight:700}
+.brand p{margin:0;font-size:12.5px;color:var(--muted)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-block:2px 12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;min-height:38px;padding:0 15px;display:flex;align-items:center;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);text-decoration:none;font-weight:500;font-size:14px}
+.chip[aria-current="page"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* layout */
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding-block:16px 24px}
+@media (min-width:880px){.layout{grid-template-columns:minmax(0,370px) minmax(0,1fr);align-items:start}}
+.inputs{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:18px}
+.inputs h2{font-size:20px;font-weight:700}
+.inputs .desc{margin:4px 0 0;color:var(--muted);font-size:13.5px}
+.inputs .eg{margin:0;color:var(--muted);font-size:12px}
+.field{display:flex;flex-direction:column;gap:6px}
+.frow{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.frow label{font-weight:500;font-size:14px}
+.inwrap{display:flex;align-items:center;gap:4px;flex:none;width:156px;min-height:40px;padding:0 10px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px}
+.inwrap:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.inwrap span{color:var(--muted);font-size:14px}
+.inwrap input{width:100%;min-width:0;border:0;background:transparent;color:var(--ink);text-align:right;font:600 16px var(--font-display);font-variant-numeric:tabular-nums;outline:0;-moz-appearance:textfield;appearance:textfield}
+.inwrap input::-webkit-outer-spin-button,.inwrap input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+select{width:156px;min-height:40px;padding:0 8px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;color:var(--ink);font:500 14px var(--font-body)}
+input[type=range]{width:100%;margin:2px 0 0;accent-color:var(--accent)}
+.hint{min-height:1.3em;font-size:12.5px;color:var(--muted)}
+
+/* results */
+.results{display:flex;flex-direction:column;gap:12px;min-width:0}
+.headline{background:var(--accent);color:var(--accent-ink);border-radius:14px;padding:18px 18px 16px}
+.headline .k{font-size:12px;letter-spacing:.07em;text-transform:uppercase;opacity:.88;font-weight:500}
+.headline .v{font:700 clamp(30px,8.5vw,44px)/1.1 var(--font-display);margin-top:6px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.headline .w{font-size:13.5px;opacity:.9;margin-top:4px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:20px;min-width:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px 16px}
+.stat{min-width:0}
+.stat .k{font-size:12.5px;color:var(--muted)}
+.stat .v{font:600 18px var(--font-display);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.split{display:flex;gap:2px;height:12px;border-radius:6px;overflow:hidden}
+.split i{display:block;min-width:2px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;color:var(--muted);margin-top:8px}
+.sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.s-base{background:var(--c-base)} .s-gain{background:var(--c-gain)} .s-cost{background:var(--c-cost)}
+.sh{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px 16px;margin-bottom:8px}
+.sh h3{font-size:15px;font-weight:600}
+.sh .legend{margin:0}
+svg.chart{display:block;width:100%;height:auto;touch-action:manipulation;cursor:pointer}
+.grid{stroke:var(--line);stroke-width:1}
+.ax{fill:var(--muted);font:10.5px var(--font-body)}
+.b{transition:opacity .15s}
+.b.dim{opacity:.4}
+.b-base{fill:var(--c-base)} .b-gain{fill:var(--c-gain)} .b-cost{fill:var(--c-cost)}
+.readout{display:flex;flex-wrap:wrap;gap:2px 16px;font-size:13px;margin-top:8px;min-height:2.6em;font-variant-numeric:tabular-nums}
+.readout b{font-weight:600}
+.insp{margin-top:4px}
+details summary{cursor:pointer;min-height:40px;display:flex;align-items:center;font-weight:600;font-size:14px}
+.tablewrap{overflow:auto;max-height:360px;border:1px solid var(--line);border-radius:10px;margin-top:6px}
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 12px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+th{position:sticky;top:0;background:var(--surface-2);font-weight:600;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+.notes{margin:0;padding-left:18px;color:var(--muted);font-size:12.5px;line-height:1.55}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:24px;color:var(--muted)}
+.foot{padding-block:4px 32px;color:var(--muted);font-size:12.5px}
+@media (prefers-reduced-motion:reduce){.b{transition:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">₹</div>
+      <div>
+        <h1>Nivesh Calculator</h1>
+        <p>Loans, SIPs and savings schemes, worked out in rupees</p>
+      </div>
+    </div>
+    <nav class="chips" id="nav" aria-label="Calculators"></nav>
+  </div>
+</header>
+
+<main class="wrap layout">
+  <section class="inputs" id="inputs" aria-label="Inputs"></section>
+  <section class="results" id="results" aria-label="Results"></section>
+</main>
+
+<footer class="wrap foot">
+  Estimates for planning only, not financial advice. Rates and tax rules change, so confirm with your bank, fund house or the scheme's official notification before you decide.
+</footer>
+
+<script>
+/*CALC-START*/
+const trim = x => String(+x.toFixed(2));
+const inr = n => { const r = Math.round(n); return (r < 0 ? '-' : '') + '₹' + Math.abs(r).toLocaleString('en-IN'); };
+const words = n => { n = Math.abs(n); if (n >= 1e7) return trim(n / 1e7) + ' Crore'; if (n >= 1e5) return trim(n / 1e5) + ' Lakh'; if (n >= 1e3) return trim(n / 1e3) + ' Thousand'; return ''; };
+const short = n => { const a = Math.abs(n); if (a >= 1e7) return trim(n / 1e7) + ' Cr'; if (a >= 1e5) return trim(n / 1e5) + ' L'; if (a >= 1e3) return trim(n / 1e3) + 'K'; return String(Math.round(n)); };
+const pct = (x, d = 2) => trim2(x, d) + '%';
+const trim2 = (x, d) => String(+x.toFixed(d));
+const dur = months => { const y = Math.floor(months / 12), m = months % 12; return [y ? y + ' yr' : '', m ? m + ' mo' : ''].filter(Boolean).join(' ') || '0 mo'; };
+const deflate = (x, f, t) => x / Math.pow(1 + f / 100, t);
+const yrs = ys => ys.map((_, k) => String(k + 1));
+
+const CALCS = {
+  emi: {
+    name: 'EMI', title: 'Loan EMI',
+    desc: 'Home, car or personal loan. Add a monthly prepayment to see what it saves you.',
+    fields: [
+      { id: 'P', label: 'Loan amount', kind: 'money', min: 100000, max: 50000000, step: 50000, v: 2500000 },
+      { id: 'r', label: 'Interest rate (p.a.)', kind: 'pct', min: 5, max: 20, step: 0.05, v: 8.75 },
+      { id: 't', label: 'Tenure', kind: 'years', min: 1, max: 40, step: 1, v: 20 },
+      { id: 'x', label: 'Extra monthly prepayment', kind: 'money', min: 0, max: 100000, step: 500, v: 0, zero: 1 }
+    ],
+    calc(v) {
+      const P = v.P, n = Math.round(v.t * 12), i = v.r / 1200, ex = v.x || 0;
+      const emi = i > 0 ? P * i * Math.pow(1 + i, n) / (Math.pow(1 + i, n) - 1) : P / n;
+      const run = extra => {
+        let bal = P, m = 0, ti = 0, yp = 0, yi = 0; const ys = [];
+        while (bal > 0.005 && m < n) {
+          m++;
+          const it = bal * i;
+          let pr = Math.min(Math.max(emi - it + extra, 0), bal);
+          bal -= pr; yp += pr; yi += it; ti += it;
+          if (m % 12 === 0 || bal <= 0.005) { ys.push({ p: yp, i: yi, b: Math.max(bal, 0) }); yp = 0; yi = 0; }
+        }
+        return { m, ti, ys };
+      };
+      const base = run(0), cur = run(ex);
+      const stats = [['Loan amount', inr(P)], ['Total interest', inr(cur.ti)], ['Total payment', inr(P + cur.ti)]];
+      if (ex > 0) stats.push(['Loan closes in', dur(cur.m)], ['Interest saved', inr(base.ti - cur.ti)], ['Time saved', dur(base.m - cur.m)]);
+      return {
+        head: { k: 'Monthly EMI', v: inr(emi), w: words(emi) ? words(emi) + ' per month' : '' },
+        stats,
+        split: [{ k: 'Principal', v: P, cls: 'base' }, { k: 'Interest', v: cur.ti, cls: 'cost' }],
+        series: [{ k: 'Principal', cls: 'base', vals: cur.ys.map(y => y.p) }, { k: 'Interest', cls: 'cost', vals: cur.ys.map(y => y.i) }],
+        labels: yrs(cur.ys), tot: 'Paid that year', chartTitle: 'Paid each year',
+        cols: ['Year', 'Principal', 'Interest', 'Balance'],
+        rows: cur.ys.map((y, k) => [String(k + 1), inr(y.p), inr(y.i), inr(y.b)]),
+        notes: ['Fixed rate, one payment at the end of each month. A prepayment shortens the tenure and keeps the EMI the same.', 'Processing fees, insurance and part-payment charges are not included.']
+      };
+    }
+  },
+
+  sip: {
+    name: 'SIP', title: 'SIP returns',
+    desc: 'Monthly mutual fund SIP, with an optional yearly step-up.',
+    fields: [
+      { id: 'P', label: 'Monthly investment', kind: 'money', min: 500, max: 200000, step: 500, v: 10000 },
+      { id: 'r', label: 'Expected return (p.a.)', kind: 'pct', min: 1, max: 30, step: 0.1, v: 12 },
+      { id: 't', label: 'Duration', kind: 'years', min: 1, max: 40, step: 1, v: 10 },
+      { id: 's', label: 'Yearly step-up', kind: 'pct', min: 0, max: 25, step: 1, v: 0, zero: 1 },
+      { id: 'f', label: 'Inflation (p.a.)', kind: 'pct', min: 0, max: 12, step: 0.5, v: 6, zero: 1 }
+    ],
+    calc(v) {
+      const n = Math.round(v.t * 12), i = v.r / 1200; let bal = 0, inv = 0, a = v.P; const ys = [];
+      for (let m = 1; m <= n; m++) {
+        if (m > 1 && (m - 1) % 12 === 0) a *= 1 + v.s / 100;
+        bal = (bal + a) * (1 + i); inv += a;
+        if (m % 12 === 0 || m === n) ys.push({ inv, bal });
+      }
+      return {
+        head: { k: 'Maturity value', v: inr(bal), w: words(bal) },
+        stats: [['Amount invested', inr(inv)], ['Estimated returns', inr(bal - inv)], ["Worth in today's money", inr(deflate(bal, v.f, v.t))], ['Money multiple', (bal / inv).toFixed(2) + 'x']],
+        split: [{ k: 'Invested', v: inv, cls: 'base' }, { k: 'Returns', v: bal - inv, cls: 'gain' }],
+        series: [{ k: 'Invested', cls: 'base', vals: ys.map(y => y.inv) }, { k: 'Returns', cls: 'gain', vals: ys.map(y => y.bal - y.inv) }],
+        labels: yrs(ys), tot: 'Value', chartTitle: 'Growth by year',
+        cols: ['Year', 'Invested', 'Returns', 'Value'],
+        rows: ys.map((y, k) => [String(k + 1), inr(y.inv), inr(y.bal - y.inv), inr(y.bal)]),
+        notes: ['Investment is made at the start of each month and grows at the annual rate divided by 12.', 'Market returns are not fixed. Treat the result as one possible outcome, not a promise.', "Today's money value shows the maturity amount reduced by the inflation you entered."]
+      };
+    }
+  },
+
+  lumpsum: {
+    name: 'Lumpsum', title: 'Lumpsum growth',
+    desc: 'One-time investment in a fund, stocks, gold or any asset with an expected yearly return.',
+    fields: [
+      { id: 'P', label: 'Investment amount', kind: 'money', min: 10000, max: 50000000, step: 10000, v: 500000 },
+      { id: 'r', label: 'Expected return (p.a.)', kind: 'pct', min: 1, max: 30, step: 0.1, v: 12 },
+      { id: 't', label: 'Duration', kind: 'years', min: 1, max: 40, step: 1, v: 10 },
+      { id: 'f', label: 'Inflation (p.a.)', kind: 'pct', min: 0, max: 12, step: 0.5, v: 6, zero: 1 }
+    ],
+    calc(v) {
+      const t = Math.round(v.t), vals = [];
+      for (let y = 1; y <= t; y++) vals.push(v.P * Math.pow(1 + v.r / 100, y));
+      const fin = vals[vals.length - 1];
+      return {
+        head: { k: 'Value after ' + t + (t === 1 ? ' year' : ' years'), v: inr(fin), w: words(fin) },
+        stats: [['Amount invested', inr(v.P)], ['Estimated returns', inr(fin - v.P)], ["Worth in today's money", inr(deflate(fin, v.f, t))], ['Money multiple', (fin / v.P).toFixed(2) + 'x']],
+        split: [{ k: 'Invested', v: v.P, cls: 'base' }, { k: 'Returns', v: fin - v.P, cls: 'gain' }],
+        series: [{ k: 'Invested', cls: 'base', vals: vals.map(() => v.P) }, { k: 'Returns', cls: 'gain', vals: vals.map(x => x - v.P) }],
+        labels: yrs(vals), tot: 'Value', chartTitle: 'Growth by year',
+        cols: ['Year', 'Invested', 'Returns', 'Value'],
+        rows: vals.map((x, k) => [String(k + 1), inr(v.P), inr(x - v.P), inr(x)]),
+        notes: ['Compounded once a year at the expected return. Actual returns will move up and down.']
+      };
+    }
+  },
+
+  swp: {
+    name: 'SWP', title: 'Systematic withdrawal',
+    desc: 'Withdraw a fixed amount every month from a corpus that keeps earning. See how long it lasts.',
+    fields: [
+      { id: 'C', label: 'Starting corpus', kind: 'money', min: 100000, max: 100000000, step: 100000, v: 5000000 },
+      { id: 'W', label: 'Monthly withdrawal', kind: 'money', min: 1000, max: 500000, step: 1000, v: 30000 },
+      { id: 'r', label: 'Expected return (p.a.)', kind: 'pct', min: 1, max: 20, step: 0.1, v: 8 },
+      { id: 't', label: 'Duration', kind: 'years', min: 1, max: 40, step: 1, v: 15 },
+      { id: 's', label: 'Yearly rise in withdrawal', kind: 'pct', min: 0, max: 15, step: 0.5, v: 0, zero: 1 }
+    ],
+    calc(v) {
+      const n = Math.round(v.t * 12), i = v.r / 1200; let bal = v.C, w = v.W, tot = 0, yw = 0, dep = 0; const ys = [];
+      for (let m = 1; m <= n; m++) {
+        if (m > 1 && (m - 1) % 12 === 0) w *= 1 + v.s / 100;
+        const take = Math.min(w, bal); bal -= take; tot += take; yw += take;
+        if (bal <= 0.5) { bal = 0; dep = m; ys.push({ bal: 0, w: yw }); break; }
+        bal *= 1 + i;
+        if (m % 12 === 0 || m === n) { ys.push({ bal, w: yw }); yw = 0; }
+      }
+      const head = dep
+        ? { k: 'Corpus lasts', v: dur(dep), w: 'Withdrawals outrun the returns. Lower the withdrawal or raise the corpus to last longer.' }
+        : { k: 'Balance after ' + Math.round(v.t) + ' years', v: inr(bal), w: words(bal) };
+      return {
+        head,
+        stats: [['Total withdrawn', inr(tot)], ['Returns earned', inr(bal + tot - v.C)], ['First-year withdrawal rate', pct(v.W * 12 / v.C * 100, 1)]],
+        split: null,
+        series: [{ k: 'Balance', cls: 'base', vals: ys.map(y => y.bal) }],
+        labels: yrs(ys), tot: null, chartTitle: 'Balance at year end',
+        cols: ['Year', 'Withdrawn', 'Balance'],
+        rows: ys.map((y, k) => [String(k + 1), inr(y.w), inr(y.bal)]),
+        notes: ['Withdrawal is taken at the start of each month and the rest earns the monthly rate.', 'Tax on the gains in each withdrawal is not included.']
+      };
+    }
+  },
+
+  fd: {
+    name: 'FD', title: 'Fixed deposit',
+    desc: 'Cumulative FD maturity, with the effect of tax and inflation on what you really earn.',
+    fields: [
+      { id: 'P', label: 'Deposit amount', kind: 'money', min: 10000, max: 10000000, step: 10000, v: 500000 },
+      { id: 'r', label: 'Interest rate (p.a.)', kind: 'pct', min: 3, max: 10, step: 0.05, v: 7, note: 'Check your bank\'s current rate' },
+      { id: 't', label: 'Tenure', kind: 'years', min: 0.25, max: 10, step: 0.25, v: 5 },
+      { id: 'm', label: 'Compounding', kind: 'select', opts: [[4, 'Quarterly'], [12, 'Monthly'], [2, 'Half-yearly'], [1, 'Yearly']], v: 4 },
+      { id: 's', label: 'Your tax slab', kind: 'select', opts: [[0, 'Ignore tax'], [5, '5%'], [10, '10%'], [15, '15%'], [20, '20%'], [25, '25%'], [30, '30%']], v: 0 },
+      { id: 'f', label: 'Inflation (p.a.)', kind: 'pct', min: 0, max: 12, step: 0.5, v: 6, zero: 1 }
+    ],
+    calc(v) {
+      const fv = (P, r, m, t) => P * Math.pow(1 + r / 100 / m, m * t);
+      const m = v.m, t = v.t, tax = v.s / 100 * 1.04, rn = v.r * (1 - tax);
+      const mat = fv(v.P, v.r, m, t), post = fv(v.P, rn, m, t);
+      const effPre = Math.pow(1 + v.r / 100 / m, m) - 1, effPost = Math.pow(1 + rn / 100 / m, m) - 1;
+      const real = ((1 + effPost) / (1 + v.f / 100) - 1) * 100;
+      const vals = [], labels = [];
+      for (let y = 1; y <= Math.ceil(t); y++) { const tt = Math.min(y, t); vals.push(fv(v.P, v.r, m, tt)); labels.push(String(+tt.toFixed(2))); }
+      const stats = [['Interest earned', inr(mat - v.P)], ['Effective yearly yield', pct(effPre * 100)]];
+      if (v.s > 0) stats.push(['Maturity after tax', inr(post)]);
+      stats.push(['Real yearly return', pct(real)]);
+      return {
+        head: { k: 'Maturity amount', v: inr(mat), w: words(mat) },
+        stats,
+        split: [{ k: 'Deposit', v: v.P, cls: 'base' }, { k: 'Interest', v: mat - v.P, cls: 'gain' }],
+        series: [{ k: 'Deposit', cls: 'base', vals: vals.map(() => v.P) }, { k: 'Interest', cls: 'gain', vals: vals.map(x => x - v.P) }],
+        labels, tot: 'Value', chartTitle: 'Growth by year',
+        cols: ['Year', 'Deposit', 'Interest', 'Value'],
+        rows: vals.map((x, k) => [labels[k], inr(v.P), inr(x - v.P), inr(x)]),
+        notes: ['Real yearly return is the effective yield after tax (if you picked a slab, including 4% cess), reduced by inflation.', 'After-tax figures assume the interest is taxed every year at your slab. TDS rules and the senior citizen rates are not modelled.']
+      };
+    }
+  },
+
+  rd: {
+    name: 'RD', title: 'Recurring deposit',
+    desc: 'Fixed monthly deposit with quarterly compounding, as most Indian banks calculate it.',
+    fields: [
+      { id: 'R', label: 'Monthly deposit', kind: 'money', min: 500, max: 100000, step: 500, v: 10000 },
+      { id: 'r', label: 'Interest rate (p.a.)', kind: 'pct', min: 3, max: 10, step: 0.05, v: 7, note: 'Check your bank\'s current rate' },
+      { id: 't', label: 'Tenure', kind: 'years', min: 0.5, max: 10, step: 0.25, v: 5 }
+    ],
+    calc(v) {
+      const mn = Math.round(v.t * 12), q = 1 + v.r / 400;
+      const bal = k => { let s = 0; for (let j = 1; j <= k; j++) s += v.R * Math.pow(q, 4 * (k - j + 1) / 12); return s; };
+      const ys = [], labels = [];
+      for (let y = 1; y <= Math.ceil(mn / 12); y++) { const k = Math.min(12 * y, mn); ys.push({ inv: v.R * k, bal: bal(k) }); labels.push(String(+(k / 12).toFixed(2))); }
+      const last = ys[ys.length - 1];
+      return {
+        head: { k: 'Maturity amount', v: inr(last.bal), w: words(last.bal) },
+        stats: [['Total deposited', inr(last.inv)], ['Interest earned', inr(last.bal - last.inv)], ['Number of deposits', String(mn)]],
+        split: [{ k: 'Deposited', v: last.inv, cls: 'base' }, { k: 'Interest', v: last.bal - last.inv, cls: 'gain' }],
+        series: [{ k: 'Deposited', cls: 'base', vals: ys.map(y => y.inv) }, { k: 'Interest', cls: 'gain', vals: ys.map(y => y.bal - y.inv) }],
+        labels, tot: 'Value', chartTitle: 'Growth by year',
+        cols: ['Year', 'Deposited', 'Interest', 'Value'],
+        rows: ys.map((y, k) => [labels[k], inr(y.inv), inr(y.bal - y.inv), inr(y.bal)]),
+        notes: ['Each deposit earns interest for its remaining months at the quarterly compounded rate. Banks can differ by a few rupees.']
+      };
+    }
+  },
+
+  ppf: {
+    name: 'PPF', title: 'PPF maturity',
+    desc: 'Public Provident Fund with yearly deposits. Tenure is 15 years and can be extended in blocks of 5.',
+    fields: [
+      { id: 'D', label: 'Yearly deposit', kind: 'money', min: 500, max: 150000, step: 500, v: 150000, note: 'Max ₹1.5 lakh a year' },
+      { id: 'r', label: 'Interest rate (p.a.)', kind: 'pct', min: 5, max: 10, step: 0.05, v: 7.1, note: 'Set by the Government each quarter' },
+      { id: 't', label: 'Tenure', kind: 'years', min: 15, max: 50, step: 5, v: 15 },
+      { id: 'f', label: 'Inflation (p.a.)', kind: 'pct', min: 0, max: 12, step: 0.5, v: 6, zero: 1 }
+    ],
+    calc(v) {
+      const d = Math.min(Math.max(v.D, 500), 150000), t = Math.round(v.t); let bal = 0; const ys = [];
+      for (let y = 1; y <= t; y++) { bal = (bal + d) * (1 + v.r / 100); ys.push({ inv: d * y, bal }); }
+      const inv = d * t;
+      return {
+        head: { k: 'Maturity value after ' + t + ' years', v: inr(bal), w: words(bal) },
+        stats: [['Total deposited', inr(inv)], ['Interest earned', inr(bal - inv)], ["Worth in today's money", inr(deflate(bal, v.f, t))]],
+        split: [{ k: 'Deposited', v: inv, cls: 'base' }, { k: 'Interest', v: bal - inv, cls: 'gain' }],
+        series: [{ k: 'Deposited', cls: 'base', vals: ys.map(y => y.inv) }, { k: 'Interest', cls: 'gain', vals: ys.map(y => y.bal - y.inv) }],
+        labels: yrs(ys), tot: 'Balance', chartTitle: 'Balance by year',
+        cols: ['Year', 'Deposited', 'Interest', 'Balance'],
+        rows: ys.map((y, k) => [String(k + 1), inr(y.inv), inr(y.bal - y.inv), inr(y.bal)]),
+        notes: ['Deposit is assumed to be made before the 5th of April each year, so it earns interest for the full year.', 'The rate changes quarterly. Update it to the latest notified rate for a closer figure.', 'Interest and maturity are tax-free under current rules.']
+      };
+    }
+  },
+
+  goal: {
+    name: 'Goal', title: 'Goal planner',
+    desc: 'Find the SIP needed for a future goal, after allowing for inflation.',
+    fields: [
+      { id: 'T', label: "Goal amount (today's cost)", kind: 'money', min: 100000, max: 100000000, step: 100000, v: 5000000 },
+      { id: 't', label: 'Years to goal', kind: 'years', min: 1, max: 40, step: 1, v: 15 },
+      { id: 'r', label: 'Expected return (p.a.)', kind: 'pct', min: 1, max: 30, step: 0.1, v: 12 },
+      { id: 'f', label: 'Inflation (p.a.)', kind: 'pct', min: 0, max: 12, step: 0.5, v: 6, zero: 1 },
+      { id: 'C', label: 'Already saved for it', kind: 'money', min: 0, max: 20000000, step: 50000, v: 0, zero: 1 }
+    ],
+    calc(v) {
+      const n = Math.round(v.t * 12), i = v.r / 1200;
+      const goal = v.T * Math.pow(1 + v.f / 100, v.t);
+      const grown = v.C * Math.pow(1 + i, n);
+      const need = Math.max(0, goal - grown);
+      const ann = i > 0 ? ((Math.pow(1 + i, n) - 1) / i) * (1 + i) : n;
+      const sip = need / ann, lump = need / Math.pow(1 + i, n);
+      let bal = v.C, inv = v.C; const ys = [];
+      for (let m = 1; m <= n; m++) { bal = (bal + sip) * (1 + i); inv += sip; if (m % 12 === 0 || m === n) ys.push({ inv, bal }); }
+      return {
+        head: need > 0
+          ? { k: 'Monthly SIP needed', v: inr(sip), w: words(sip) ? words(sip) + ' per month' : '' }
+          : { k: 'Monthly SIP needed', v: inr(0), w: 'Your current savings alone reach this goal.' },
+        stats: [['Goal cost in ' + trim(v.t) + ' yrs', inr(goal)], ['Or invest once today', inr(lump)], ['Total SIP paid', inr(sip * n)], ['Growth on investments', inr(goal - v.C - sip * n)]],
+        split: [{ k: 'Your money', v: v.C + sip * n, cls: 'base' }, { k: 'Growth', v: Math.max(goal - v.C - sip * n, 0), cls: 'gain' }],
+        series: [{ k: 'Your money', cls: 'base', vals: ys.map(y => y.inv) }, { k: 'Growth', cls: 'gain', vals: ys.map(y => Math.max(y.bal - y.inv, 0)) }],
+        labels: yrs(ys), tot: 'Value', chartTitle: 'Path to the goal',
+        cols: ['Year', 'Your money', 'Growth', 'Value'],
+        rows: ys.map((y, k) => [String(k + 1), inr(y.inv), inr(y.bal - y.inv), inr(y.bal)]),
+        notes: ["The goal amount is raised by inflation each year, so it shows what the same thing will cost then.", 'The SIP stays level for the whole period. Starting a higher SIP with a yearly step-up needs less at the start.']
+      };
+    }
+  },
+
+  cagr: {
+    name: 'CAGR', title: 'CAGR',
+    desc: 'Yearly growth rate between a starting and an ending value.',
+    fields: [
+      { id: 'A', label: 'Starting value', kind: 'money', min: 1000, max: 10000000, step: 1000, v: 100000 },
+      { id: 'B', label: 'Ending value', kind: 'money', min: 1000, max: 50000000, step: 1000, v: 250000 },
+      { id: 't', label: 'Period', kind: 'years', min: 0.5, max: 50, step: 0.5, v: 5 }
+    ],
+    calc(v) {
+      const c = (Math.pow(v.B / v.A, 1 / v.t) - 1) * 100, abs = (v.B / v.A - 1) * 100;
+      const dbl = c > 0 ? Math.log(2) / Math.log(1 + c / 100) : null;
+      return {
+        head: { k: 'Compound annual growth rate', v: pct(c), w: 'per year' },
+        stats: [['Total change', pct(abs, 1)], ['Gain or loss', inr(v.B - v.A)], ['Money multiple', (v.B / v.A).toFixed(2) + 'x'], ['Doubling time', dbl ? trim2(dbl, 1) + ' years' : 'Not growing']],
+        split: null, series: null, rows: null,
+        notes: ['CAGR smooths the journey into one steady yearly rate. It ignores the ups and downs in between and any money added or withdrawn.']
+      };
+    }
+  }
+};
+/*CALC-END*/
+
+/*UI-START*/
+const ORDER = ['emi', 'sip', 'lumpsum', 'swp', 'fd', 'rd', 'ppf', 'goal', 'cagr'];
+const $ = s => document.querySelector(s);
+let cur = null, sel = null, tableOpen = false;
+let vals = {};
+try { vals = JSON.parse(localStorage.getItem('nivesh.vals.v1')) || {}; } catch (e) { vals = {}; }
+const save = () => { try { localStorage.setItem('nivesh.vals.v1', JSON.stringify(vals)); } catch (e) {} };
+const defaults = id => Object.fromEntries(CALCS[id].fields.map(f => [f.id, f.v]));
+const getVals = id => (vals[id] = Object.assign(defaults(id), vals[id] || {}));
+const hardMax = f => f.kind === 'money' ? 1e11 : f.max;
+const clean = id => {
+  const v = Object.assign({}, getVals(id));
+  CALCS[id].fields.forEach(f => { if (f.kind !== 'select' && Number.isFinite(v[f.id])) v[f.id] = Math.min(Math.max(v[f.id], 0), hardMax(f)); });
+  return v;
+};
+
+function buildNav() {
+  $('#nav').innerHTML = ORDER.map(id => `<a class="chip" href="#${id}" data-id="${id}">${CALCS[id].name}</a>`).join('');
+}
+function markNav() {
+  document.querySelectorAll('#nav .chip').forEach(a => {
+    const on = a.dataset.id === cur;
+    if (on) { a.setAttribute('aria-current', 'page'); a.scrollIntoView({ inline: 'center', block: 'nearest' }); } else a.removeAttribute('aria-current');
+  });
+}
+
+function buildInputs() {
+  const c = CALCS[cur], v = getVals(cur);
+  const fieldHTML = f => {
+    const id = `${cur}-${f.id}`;
+    if (f.kind === 'select') {
+      return `<div class="field"><div class="frow"><label for="${id}-n">${f.label}</label><select id="${id}-n" data-f="${f.id}">${f.opts.map(o => `<option value="${o[0]}"${+o[0] === +v[f.id] ? ' selected' : ''}>${o[1]}</option>`).join('')}</select></div></div>`;
+    }
+    const pre = f.kind === 'money' ? '<span>₹</span>' : '';
+    const suf = f.kind === 'pct' ? '<span>%</span>' : f.kind === 'years' ? '<span>yr</span>' : '';
+    return `<div class="field"><div class="frow"><label for="${id}-n">${f.label}</label><div class="inwrap">${pre}<input id="${id}-n" data-f="${f.id}" type="number" inputmode="decimal" min="${f.min}" max="${hardMax(f)}" step="any" value="${v[f.id]}">${suf}</div></div>
+      <input id="${id}-r" data-f="${f.id}" type="range" min="${f.min}" max="${f.max}" step="${f.step}" value="${v[f.id]}" aria-label="${f.label} slider">
+      <div class="hint" id="${id}-h"></div></div>`;
+  };
+  $('#inputs').innerHTML = `<div><h2>${c.title}</h2><p class="desc">${c.desc}</p></div>${c.fields.map(fieldHTML).join('')}<p class="eg">Starting values are examples. Change them to match your case.</p>`;
+  refreshHints();
+}
+function refreshHints() {
+  const v = getVals(cur);
+  CALCS[cur].fields.forEach(f => {
+    const el = document.getElementById(`${cur}-${f.id}-h`); if (!el) return;
+    const x = v[f.id]; let dyn = '';
+    if (Number.isFinite(x)) {
+      if (f.kind === 'money') dyn = words(x);
+      else if (f.kind === 'years' && x % 1 !== 0) dyn = `${Math.floor(x)} yr ${Math.round((x % 1) * 12)} mo`;
+    }
+    el.textContent = [dyn, f.note].filter(Boolean).join(' · ');
+  });
+}
+
+function niceScale(max) {
+  if (!(max > 0)) return { top: 1, step: 0.25 };
+  const raw = max / 4, p = Math.pow(10, Math.floor(Math.log10(raw))), m = raw / p;
+  const s = (m <= 1 ? 1 : m <= 2 ? 2 : m <= 2.5 ? 2.5 : m <= 5 ? 5 : 10) * p;
+  return { top: Math.ceil(max / s - 1e-9) * s, step: s };
+}
+
+function chartSVG(o, W) {
+  const H = 200, L = 46, R = 6, T = 8, B = 24, n = o.labels.length;
+  const tot = o.series[0].vals.map((_, i) => o.series.reduce((s, x) => s + x.vals[i], 0));
+  const { top, step } = niceScale(Math.max(...tot));
+  const iw = W - L - R, ih = H - T - B, bw = iw / n, gap = Math.min(3, bw * 0.2);
+  const y = val => T + ih - (val / top) * ih;
+  let g = '', bars = '', xl = '';
+  for (let k = 0; k * step <= top + 1e-9; k++) {
+    const yy = y(k * step);
+    g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}"/><text class="ax" x="${L - 6}" y="${yy + 3.5}" text-anchor="end">${short(k * step)}</text>`;
+  }
+  for (let i = 0; i < n; i++) {
+    let base = 0;
+    o.series.forEach(s => {
+      const val = s.vals[i]; if (!(val > 0)) return;
+      bars += `<rect class="b b-${s.cls}" data-i="${i}" x="${(L + i * bw + gap / 2).toFixed(2)}" y="${y(base + val).toFixed(2)}" width="${Math.max(bw - gap, 1).toFixed(2)}" height="${(val / top * ih).toFixed(2)}"/>`;
+      base += val;
+    });
+  }
+  const k = Math.ceil(n / 7), shown = [];
+  for (let i = k - 1; i < n; i += k) shown.push(i);
+  if (shown[shown.length - 1] !== n - 1 && n - 1 - shown[shown.length - 1] >= k * 0.6) shown.push(n - 1);
+  shown.forEach(i => { xl += `<text class="ax" x="${(L + (i + 0.5) * bw).toFixed(2)}" y="${H - 8}" text-anchor="middle">${o.labels[i]}</text>`; });
+  return `<svg class="chart" id="cv" viewBox="0 0 ${W} ${H}" role="img" aria-label="${o.chartTitle} chart" data-l="${L}" data-bw="${bw}" data-w="${W}">${g}${bars}${xl}</svg>`;
+}
+
+let curOut = null;
+function setSel(i) {
+  if (!curOut || !curOut.series) return;
+  const n = curOut.labels.length; i = Math.min(Math.max(i, 0), n - 1); sel = i;
+  document.querySelectorAll('#cv .b').forEach(r => r.classList.toggle('dim', +r.dataset.i !== i));
+  const insp = $('#insp'); if (insp) insp.value = i;
+  const parts = curOut.series.map(s => `<span><i class="sw s-${s.cls}"></i>${s.k} <b>${inr(s.vals[i])}</b></span>`);
+  if (curOut.tot && curOut.series.length > 1) parts.push(`<span>${curOut.tot} <b>${inr(curOut.series.reduce((a, s) => a + s.vals[i], 0))}</b></span>`);
+  $('#readout').innerHTML = `<span><b>Year ${curOut.labels[i]}</b></span>${parts.join('')}`;
+}
+
+function renderResult() {
+  const c = CALCS[cur], v = clean(cur), res = $('#results');
+  const ok = c.fields.every(f => f.kind === 'select' || (Number.isFinite(v[f.id]) && (f.zero ? v[f.id] >= 0 : v[f.id] > 0)));
+  if (!ok) { curOut = null; res.innerHTML = '<div class="empty">Enter a value above zero in every field to see the results.</div>'; return; }
+  let o;
+  try { o = c.calc(v); } catch (e) { curOut = null; res.innerHTML = '<div class="empty">These inputs cannot be calculated. Try different values.</div>'; return; }
+  curOut = o;
+  const w = Math.max(260, Math.floor(res.getBoundingClientRect().width - 34));
+  let html = `<div class="headline" aria-live="polite"><div class="k">${o.head.k}</div><div class="v">${o.head.v}</div>${o.head.w ? `<div class="w">${o.head.w}</div>` : ''}</div><div class="panel">`;
+  html += `<div class="stats">${o.stats.map(s => `<div class="stat"><div class="k">${s[0]}</div><div class="v">${s[1]}</div></div>`).join('')}</div>`;
+  if (o.split) {
+    const sum = o.split.reduce((a, s) => a + Math.max(s.v, 0), 0) || 1;
+    html += `<div><div class="split" role="img" aria-label="Split of the total">${o.split.map(s => `<i class="s-${s.cls}" style="flex:${Math.max(s.v, 0) / sum}"></i>`).join('')}</div><div class="legend">${o.split.map(s => `<span><i class="sw s-${s.cls}"></i>${s.k} ${inr(s.v)} (${Math.round(Math.max(s.v, 0) / sum * 100)}%)</span>`).join('')}</div></div>`;
+  }
+  if (o.series) {
+    html += `<section><div class="sh"><h3>${o.chartTitle}</h3><div class="legend">${o.series.map(s => `<span><i class="sw s-${s.cls}"></i>${s.k}</span>`).join('')}</div></div>${chartSVG(o, w)}<div class="readout" id="readout"></div><input class="insp" id="insp" type="range" min="0" max="${o.labels.length - 1}" step="1" value="0" aria-label="Pick a year to inspect"></section>`;
+  }
+  if (o.rows) {
+    html += `<details id="tbl"${tableOpen ? ' open' : ''}><summary>Year-by-year table</summary><div class="tablewrap"><table><thead><tr>${o.cols.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${o.rows.map(r => `<tr>${r.map(x => `<td>${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
+  }
+  html += `<ul class="notes">${o.notes.map(n => `<li>${n}</li>`).join('')}</ul></div>`;
+  res.innerHTML = html;
+  const tbl = $('#tbl'); if (tbl) tbl.addEventListener('toggle', () => { tableOpen = tbl.open; });
+  if (o.series) {
+    const n = o.labels.length;
+    $('#insp').addEventListener('input', e => setSel(+e.target.value));
+    $('#cv').addEventListener('click', e => {
+      const svg = $('#cv'), r = svg.getBoundingClientRect(), W = +svg.dataset.w, L = +svg.dataset.l, bw = +svg.dataset.bw;
+      setSel(Math.floor(((e.clientX - r.left) / r.width * W - L) / bw));
+    });
+    setSel(sel === null ? n - 1 : sel);
+  }
+}
+
+$('#inputs').addEventListener('input', e => {
+  const el = e.target, fid = el.dataset.f; if (!fid) return;
+  let x = parseFloat(el.value);
+  if (el.type === 'range') { const num = document.getElementById(`${cur}-${fid}-n`); if (num) num.value = x; }
+  else if (el.tagName !== 'SELECT') { const r = document.getElementById(`${cur}-${fid}-r`); if (r && Number.isFinite(x)) r.value = x; }
+  getVals(cur)[fid] = x; save(); refreshHints(); renderResult();
+});
+$('#inputs').addEventListener('change', e => {
+  const el = e.target, fid = el.dataset.f; if (!fid || el.type === 'range' || el.tagName === 'SELECT') return;
+  const f = CALCS[cur].fields.find(q => q.id === fid); let x = parseFloat(el.value);
+  if (!Number.isFinite(x)) x = f.v; x = Math.min(Math.max(x, 0), hardMax(f));
+  el.value = x; getVals(cur)[fid] = x; save(); refreshHints(); renderResult();
+});
+
+function route() {
+  let id = location.hash.slice(1); if (!CALCS[id]) id = 'emi';
+  if (id !== cur) { cur = id; sel = null; buildInputs(); markNav(); window.scrollTo(0, 0); }
+  renderResult();
+}
+window.addEventListener('hashchange', route);
+let rz; window.addEventListener('resize', () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(renderResult); });
+buildNav(); route();
+/*UI-END*/
+</script>
+
+</body>
+</html>
